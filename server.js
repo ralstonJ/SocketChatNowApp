@@ -6,7 +6,7 @@ var server = http.createServer(function(req, res) {
 	
 	res.end(fs.readFileSync(__dirname + '/speechApp.html'));
 
-}).listen(process.env.PORT, function() {console.log('Listening at:' + process.env.PORT);});
+}).listen(process.env.PORT, function() {});
  
  
 socketio.listen(server).on('connection', function (socket) {
