@@ -17,5 +17,8 @@ socketio.listen(server).on('connection', function (socket) {
 		//Broadcast to all clients
 		socket.broadcast.emit('message', msg);
 	});
-
+socketio.configure(function() {
+  socketio.set('transports', ['websocket']);
+});
+	
 });
