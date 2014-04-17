@@ -1,0 +1,194 @@
+<html>
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ 
+	<link rel="stylesheet" href="./node_modules/bootstrap/css/bootstrap.css"  type="text/css" /> 
+	<link rel="stylesheet" href="./node_modules/bootstrap/css/bootstrap.min.css"  type="text/css" />	
+	<style>
+	 .hidden
+		{
+			display: none;
+		}
+		
+	.alert
+		{
+			width: 350px;
+		}
+	</style>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>	
+	<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="navbar">
+		<div class="navbar-inner">
+			<div class="container">
+				<h2> Welcome to your personal Self Chat App !! </h2>
+			</div>
+		</div>
+	</div>	
+	<p> Enter First Participant name: </p>	<input  id="txt_Fname" type="text" placeholder="Enter name "> </input>
+	<button class="btn" id="btn_start_Fname">Start Session of 1st Participant</button> <span id="tmr_Fname">  </span> 
+	
+	<!--	
+	<p> Enter Second Participant name: </p> <input  id="txt_Sname" type="text" placeholder="Enter name "> </input>
+	<button class="btn" id="btn_start_Sname">Start Session of 2nd Participant</button> <span id="tmr_Sname"></span> 
+	-->
+	
+	<h3>Conversation :</h3>			
+	<p id="divLogInfo"><p>
+
+	<h3>Log</h3>
+    <p id="log"> </p>
+	
+	<button class="btn" id="btn_stop" >Stop Speech Api</button>
+    <button class="btn" id="btn_clear">Clear All</button>
+	
+	<span id="span_unsupported" class="hidden">Google speech API not supported. Please load page in chrome.</span>
+ 
+	<script>
+		$(document).ready(function(){		
+			
+			/*
+			*	lblNotify() sets the label "#tmr_Fname" or "#tmr_Sname" to "green"  or  "red" 
+			*
+			*	@param idImp : take element "#tmr_Fname" or "#tmr_Sname"
+			*	@param idScs : take element "#tmr_Fname" or "#tmr_Sname"
+			*/	
+			function lblNotify(idImp, idScs){
+						editNotify(idImp,"label label-important", "Wait Now");
+						editNotify(idScs,"label label-success", "Speak Now");
+			}
+			
+			/*
+			*	editNotify()  empty the element, set clss attribute and display appropriate message 
+			*
+			*	@param lblObj: get appropriate span object
+			*	@param lblClass : get respective bootstarp class for label
+			*	@param lblMessage : get appropriate message to display on label
+			*/
+			function editNotify(lblObj, lblClass, lblMessage){
+						$(lblObj).empty();
+						$(lblObj).attr("class",lblClass);
+						$(lblObj).append(lblMessage);
+			}
+			
+			window.SpeechRecognition = window.SpeechRecognition       ||
+                               window.webkitSpeechRecognition ||
+                               null;
+ 
+				  if (window.SpeechRecognition === null) {
+					document.getElementById('span_unsupported').classList.remove('hidden');
+					document.getElementById('btn_start_Fname').setAttribute('disabled', 'disabled');
+					document.getElementById('btn_start_Sname').setAttribute('disabled', 'disabled');
+					document.getElementById('btn_stop').setAttribute('disabled', 'disabled');
+				  } else {
+			 
+						var recognizer = new window.SpeechRecognition();
+		
+						// Recogniser is set to detect user's voice continously
+						recognizer.continuous = true;
+						
+						var iosocket = io.connect();
+
+						iosocket.on('connect', function () {
+							$('#divLogInfo').append($('<p>Connected</p>'));
+					
+							iosocket.on('message', function(message) {
+								$('#divLogInfo').append('<p>' + message + '</p>');
+							});
+			
+							iosocket.on('disconnect', function() {
+								$('#divLogInfo').append('<p>Disconnected</p>');
+							});
+						});
+						
+						// Start recognising
+						recognizer.onresult = function(event) {
+							for (var i = event.resultIndex; i < event.results.length; i++) {
+								
+								if (event.results[i].isFinal) {
+								var username = $("#txt_Fname").val()
+	
+								// Confindence level " predicts with Confidence: " + event.results[i][0].confidence
+								iosocket.send("<div class='alert alert-warning'><strong> " + username + " : </strong> " + event.results[i][0].transcript  + "</div>");
+
+								$("#divLogInfo").append("<div class='alert alert-warning'><strong> " + username + " : </strong> " + event.results[i][0].transcript  + "</div>");
+								
+								} else {
+									$("#divLogInfo").append("<div class='alert alert-warning'><strong> " + username + " : </strong> " + event.results[i][0].transcript  + "</div>");
+								}
+								console.log("Voice detected.");
+							}
+						};
+					
+						// Listen for errors
+						recognizer.onerror = function(event) {
+						log.innerHTML = 'Recognition error: ' + event.message + '<br />' + log.innerHTML;
+						};
+		
+						//Listener on click to btn_start_Fname
+						$('button').click(function(){
+						
+							//get id of element: fname or sname
+							var name = "Fname"
+						
+							// display name
+							var uName = $("#txt_" + name).val();
+								
+							//validate respective textbox
+							if(!$("#txt_" + name).val()){
+								editNotify("#tmr_" + name, "label label-warning", "Please Enter Name of participant");
+								return;
+							}
+							
+							// Participant Successfully Added
+							$("#divLogInfo").append("<div class='alert alert-success'> <strong>" + uName +" </strong>  has joined the conversation.... </div>");
+							iosocket.send("<div class='alert alert-success'> <strong>" + uName +" </strong>  has joined the conversation.... </div>");
+
+							console.log("Call: " + $(this).attr('id'));	
+
+							// Disable Textbox and button
+							$(this).attr("disabled", true);
+							$("#txt_" + name).attr("disabled", true);
+							console.log("Button object  : txt_start_" + name);	
+							console.log("Session started for user: " + uName);	
+							
+							if (name == "Fname") {
+								// Warning displayed when first participant added.
+								editNotify("#tmr_" + name, "label label-warning", "Wait for 2nd participant");
+						
+								// Start Conversation
+								try {
+									//Start recognizer: recignize user voice now.
+									recognizer.start();
+									log.innerHTML = 'Recognition started' + '<br />' + log.innerHTML;
+								} catch(ex) {
+									log.innerHTML = 'Recognition error: ' + ex.message + '<br />' + log.innerHTML;
+								}
+							} else {
+								//Set green to tmr_Fname, red to tmr_Sname
+								lblNotify("#tmr_Sname","#tmr_Fname");
+							}
+						});
+						
+
+						document.getElementById('btn_stop').addEventListener('click', function() {
+						recognizer.stop();
+						log.innerHTML = 'Recognition stopped' + '<br />' + log.innerHTML;
+						});
+					
+						document.getElementById('btn_clear').addEventListener('click', function() {
+						$("#divLogInfo").empty();
+						log.textContent = '';
+						});
+					}
+					
+		});
+	</script>
+			
+			
+
+</body>
+
+</html>
